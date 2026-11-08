@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#14181d">
+<title>Fahrwerks-Rechner</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<style>
+  :root{--bg:#14181d;--card:#1d232a;--line:#2c343d;--text:#e8ecef;--muted:#97a3ae;--accent:#f28c28}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font:16px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+  main{max-width:640px;margin:0 auto;padding:16px 14px 48px}
+  h1{font-size:1.35rem;margin:4px 0 2px}
+  .sub{color:var(--muted);font-size:.9rem;margin:0 0 14px}
+  section{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin:12px 0}
+  h2{font-size:1rem;margin:0 0 10px;color:var(--accent);letter-spacing:.02em}
+  label{display:block;font-size:.85rem;color:var(--muted);margin:10px 0 4px}
+  select,input[type=number]{width:100%;padding:11px 10px;font-size:1rem;background:#11151a;color:var(--text);border:1px solid var(--line);border-radius:8px}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .gear{display:grid;grid-template-columns:1fr 110px;gap:6px 10px;align-items:center}
+  .gear span{font-size:.92rem}
+  .gear input{padding:8px}
+  .sum{display:flex;justify-content:space-between;margin-top:12px;padding-top:10px;border-top:1px dashed var(--line);font-weight:600}
+  .check{display:flex;gap:10px;align-items:flex-start;margin-top:12px;font-size:.9rem;color:var(--text)}
+  .check input{width:20px;height:20px;margin-top:2px;accent-color:var(--accent);flex:none}
+  table{width:100%;border-collapse:collapse;font-size:.95rem;margin-top:8px}
+  td{padding:8px 4px;border-bottom:1px solid var(--line);vertical-align:top}
+  td:first-child{color:var(--muted);width:44%}
+  td b{font-size:1.08rem}
+  .pm{color:var(--muted);font-size:.85rem}
+  .note{font-size:.82rem;color:var(--muted);margin:8px 0 0}
+  .hidden{display:none}
+  details{margin-top:10px}
+  summary{cursor:pointer;color:var(--accent);font-size:.9rem}
+  ol{padding-left:20px;margin:8px 0} li{margin:4px 0;font-size:.9rem}
+</style>
+</head>
+<body>
+<main>
+  <h1>Fahrwerks-Rechner</h1>
+  <p class="sub">Startwerte für Luftdruck bzw. Feder, Rebound und Druckstufe. Danach Sag messen und nachjustieren.</p>
+
+  <section>
+    <h2>Bike</h2>
+    <label for="bike">Rahmen</label>
+    <select id="bike"></select>
+    <div id="customBike" class="row hidden">
+      <div><label for="cTravel">Federweg hinten (mm)</label><input id="cTravel" type="number" inputmode="decimal" value="160"></div>
+      <div><label for="cStroke">Dämpferhub (mm)</label><input id="cStroke" type="number" inputmode="decimal" value="60"></div>
+    </div>
+    <p class="note" id="bikeInfo"></p>
+  </section>
+
+  <section>
+    <h2>Fahrer &amp; Ausrüstung</h2>
+    <label for="rider">Körpergewicht (kg)</label>
+    <input id="rider" type="number" inputmode="decimal" min="40" max="150" step="0.5" value="76">
+    <label>Zusatzgewicht (kg)</label>
+    <div class="gear" id="gear"></div>
+    <div class="sum"><span>Fahrgewicht gesamt</span><span id="total">–</span></div>
+  </section>
+
+  <section>
+    <h2>Gabel</h2>
+    <label for="fork">Modell</label>
+    <select id="fork"></select>
+    <label for="forkTravel">Federweg</label>
+    <select id="forkTravel"></select>
+    <label class="check"><input id="emtb" type="checkbox">
+      <span>E-MTB-Zuschlag +5 % (wird je nach Bike automatisch gesetzt; entfällt bei Gabeln mit eigener E-Bike-Tabelle)</span></label>
+    <table id="forkOut"></table>
+  </section>
+
+  <section>
+    <h2>Dämpfer</h2>
+    <label for="shock">Modell</label>
+    <select id="shock"></select>
+    <div id="springBox" class="hidden">
+      <label for="spring">Deine aktuelle Feder (lbs/in, steht auf der Feder, z. B. „550 x 2.8“) – optional</label>
+      <input id="spring" type="number" inputmode="numeric" min="200" max="900" step="25" placeholder="z. B. 550">
+    </div>
+    <table id="shockOut"></table>
+  </section>
+
+  <section>
+    <h2>So gehst du vor</h2>
+    <ol>
+      <li>Alle Druckstufen-Hebel auf <b>offen</b>. Klicks werden immer von <b>ganz zu</b> (im Uhrzeigersinn bis Anschlag) zurückgezählt.</li>
+      <li>Luftdruck einstellen. Nach jedem Aufpumpen ein paar Mal einfedern (Druckausgleich zur Negativkammer), dann erneut messen. Bei Stahlfeder: Feder mit der angegebenen Härte montieren, 1–2 Umdrehungen Vorspannung.</li>
+      <li>In voller Montur in Fahrposition stehend Sag messen. Gabel in 5-psi-Schritten, Luftdämpfer in 10-psi-Schritten korrigieren. Stimmt der Sag bei der Stahlfeder nicht, nächste Federhärte nehmen, nicht über Vorspannung ausgleichen.</li>
+      <li>Rebound nach dem Druck nachziehen: mehr Druck braucht 1–2 Klicks mehr Dämpfung (Richtung zu).</li>
+      <li>Erst danach an der Druckstufe drehen, immer nur einen Regler und 1–2 Klicks pro Abfahrt.</li>
+    </ol>
+  </section>
+
+  <details>
+    <summary>Datenbasis</summary>
+    <p class="note">Gabeln: Fox Tuning Guides (36, 40), Santa Cruz V10-Setup (Fox 40 ab 2025, BoXXer), Mondraker-Setup-Guides (Fox 38, ZEB), Transition-Setup-Guides (Lyrik, ZEB). Dämpfer: Santa Cruz V10- und Bullit-Tabellen (Coil und Super Deluxe Air), PX-Werte für den Float X (emtbforums), SRAM- und Forbidden-Angaben (Vivid). Für Bikes ohne eigene Tabelle wird der Dämpfer über das Übersetzungsverhältnis (Federweg / Hub) gerechnet; daher die größere ±-Spanne.</p>
+  </details>
+</main>
+
+<script>
+// ===== Hilfsfunktionen =====
+function interp(xs, ys, x){
+  const n=xs.length-1;
+  if(x<=xs[0]){const s=(ys[1]-ys[0])/(xs[1]-xs[0]);return ys[0]+s*(x-xs[0]);}
+  if(x>=xs[n]){const s=(ys[n]-ys[n-1])/(xs[n]-xs[n-1]);return ys[n]+s*(x-xs[n]);}
+  for(let i=0;i<n;i++) if(x<=xs[i+1]){const t=(x-xs[i])/(xs[i+1]-xs[i]);return ys[i]+t*(ys[i+1]-ys[i]);}
+}
+const clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
+const clk=v=>{const n=Math.max(0,Math.round(v));return n+(n===1?" Klick":" Klicks");};
+const LB=2.2046;
+
+// ===== Tabellen (kg, Werte; Klicks von ganz zu) =====
+const FOX_KG=[56.5,61.5,66,70.5,75,79.5,84,88.5,93,97.5,102,106.5,111];
+const T={
+  f36:[66,70,74,78,82,86,89,94,99,105,109,113,117],
+  f36e:[71,76,81,85,90,95,99,104,109,113,115,117,120],
+  f36rh:[55,59,63,67,72,76,80,85,89,93,97,102,106],
+  rebGrip:[13,12,11,10,9,8,7,6,5,4,3,2,1],
+  lsrG2:[9,8,7,7,6,6,5,4,4,3,2,2,1],
+  hsrG2:[8,7,6,6,5,5,4,3,3,2,1,1,0],
+  f40old:[52,58,64,68,72,76,80,84,87,90,94,97,101],
+  f40oldL:[10,9,8,8,7,7,6,5,5,4,3,3,2]
+};
+const MK_KG=[56.5,60.5,64.5,68.5,72.5,76.5,80.5,84.5,88.5,92.5,96.5,100.5,104.5,108.5,112.5];
+const M={
+  f38:[65,69,73,77,81,85,89,93,97,101,105,109,113,117,121],
+  f38L:[16,15,14,13,12,11,10,9,8,7,6,5,4,3,2],
+  f38HSC:[8,8,7.5,7,6.5,6,5.5,5,4.5,4,3.5,3,2.5,2,1.5],
+  f38LSC:[18,17,16,15,14,13,12,11,10,9,8,7,6,5,4],
+  zeb180:[55,59,63,67,71,75,79,83,87,91,95,99,103,107,111],
+  zebR:[16,15.5,14.5,13.5,12.5,11.5,10.5,9.5,8.5,7.5,6.5,5.5,4.5,3.5,2.5],
+  fxL:[10,9,8,7,6,6,5,4,3.5,4,3,2.5,2,2,1],
+  fxH:[7,7,7,6.5,6.5,5.5,5.5,4.5,4.5,3.5,3.5,2.5,2.5,1.5,1.5],
+  fxLSC:[9,8,7,6.5,6,5.5,5,4.5,4,3.5,3,2.5,2,1.5,1]
+};
+const LY_KG=[59,67.5,76.5,85.5,94.5,104], LY_PSI=[55,65,75,85,95,105], LY_R=[12,11,11,11,10,9];
+const F40_KG=[59,64,68,77,82,86,91,95,100,104,109,113];
+const F40_PSI=[72,76,80,87,90,94,97,101,105,109,113,117], F40_L=[8,8,7,6,6,5,5,4,4,3,3,3], F40_H=[8,8,7,6,5,5,4,3,3,2,1,1];
+const SC_KG=[45,54,64,73,82,91,100,109];
+const BOX_PSI=[70,90,110,130,150,170,190,210], BOX_R=[17,16,15,13,11,9,8,6];
+const DHX2_L=[15,14,13,12,10,8,7,6], DHX2_H=[5,5,4,4,3,2,1,0];
+const VIVC_R=[7,7,6,6,5,5,4,4];
+const RS_KG=[56.8,61.4,65.9,70.5,75,79.5,84.1,88.6,93.2,97.7,102.3,106.8,111.4];
+const VIV_R=[18,17,16,15,14,13,12,11,10,9,8,7,6];
+const SD_R=[18,17,15,14,13,11,10,9,7,6,5,3,2];
+const X2_L=[10,10,9,9,8,8,7,7,6,5,4,3,2], X2_H=[8,8,7,6,6,5,5,4,3,2,2,1,1];
+
+// ===== Bikes =====
+// airCal: psi = airCal * Fahrgewicht(lb) * Übersetzung bei Bike-Sag. coilCal analog für Federrate.
+const BIKES={
+  px:{name:"Amflow PX (150 mm, 210x55)",travel:150,stroke:55,emtb:true,sagAir:.30,sagCoil:.30,airCal:.406,
+      info:"E-MTB, Dämpfer 210x55 bei allen Größen. Amflow rät von Stahlfederdämpfern ab."},
+  v10:{name:"Santa Cruz V10.7 (215 mm, 250x75)",travel:215,stroke:75,emtb:false,sagAir:.30,sagCoil:.225,airCal:.40,
+      coil:{rs:kg=>interp(SC_KG,[300,350,400,450,500,550,600,650],kg)*215/208, fox:kg=>interp(SC_KG,[350,400,450,500,550,600,650,700],kg)*215/208},
+      info:"Serie: Fox DHX2 Factory Coil, Fox 40 Factory 203 mm. Santa Cruz hat für das V10.7 keine Federtabelle veröffentlicht; Werte aus der V10-8-Tabelle, umgerechnet auf 215 statt 208 mm Federweg (ca. +3 %). Sag-Ziel wie beim V10 8: 22–23 %."},
+  bullit3:{name:"Santa Cruz Bullit E-MTB 2021–2024 (170 mm, 230x62,5)",travel:170,stroke:62.5,emtb:true,sagAir:.30,sagCoil:.30,airCal:.388,
+      coil:{rs:kg=>interp(SC_KG,[300,350,400,450,500,550,600,650],kg), fox:kg=>interp(SC_KG,[350,400,450,500,550,600,650,700],kg)},
+      info:"Gleicher Rahmen von 2021 bis 2024. Werte laut Santa Cruz für Super Deluxe Air und RockShox-Coil; Fox-Federhärten wie beim V10 eine Stufe (50 lbs/in) härter. Für das Bullit ab 2025 Maße unter „Eigenes Bike“ eintragen."},
+  custom:{name:"Eigenes Bike (Federweg und Hub eingeben)",travel:160,stroke:60,emtb:false,sagAir:.30,sagCoil:.28,airCal:.40,
+      info:"Dämpferwerte werden über das Übersetzungsverhältnis geschätzt. Den Sag unbedingt nachmessen."}
+};
+
+// ===== Gabeln =====
+const mid="Mitte";
+const FORKS={
+  f36rh:{name:"Fox 36 Rhythm GRIP",travels:[160,150],max:120,e:false,
+    calc:kg=>({psi:interp(FOX_KG,T.f36rh,kg),rows:[["Rebound",clk(interp(FOX_KG,T.rebGrip,kg))],["Druckstufe","Hebel offen"]]})},
+  f36p:{name:"Fox 36 Performance / Elite GRIP",travels:[160,150,170],max:120,e:false,
+    calc:kg=>({psi:interp(FOX_KG,T.f36,kg),rows:[["Rebound",clk(interp(FOX_KG,T.rebGrip,kg))],["Druckstufe","Hebel offen, Feinverstellung Mitte"]]})},
+  f36x2:{name:"Fox 36 Factory GRIP X2",travels:[160,150,170],max:120,e:false,
+    calc:kg=>({psi:interp(FOX_KG,T.f36,kg),rows:[["Rebound LSR",clk(interp(FOX_KG,T.lsrG2,kg))],["Rebound HSR",clk(interp(FOX_KG,T.hsrG2,kg))],["Druckstufe HSC / LSC","jeweils Mitte"]]})},
+  f36e:{name:"Fox 36 E-Bike+",travels:[160,150],max:120,e:true,
+    calc:kg=>({psi:interp(FOX_KG,T.f36e,kg),rows:[["Rebound",clk(interp(FOX_KG,T.rebGrip,kg))],["Druckstufe","Hebel offen, Feinverstellung Mitte"]]})},
+  f38p:{name:"Fox 38 Performance / Elite GRIP (auch E-Bike)",travels:[170,160,180],max:125,e:false,
+    calc:(kg,tr)=>({psi:interp(MK_KG,M.f38,kg)+(tr-160)*0.2,rows:[["Rebound",clk(interp(MK_KG,M.f38L,kg))],["Druckstufe","Hebel offen, Feinverstellung Mitte"]]})},
+  f38x2:{name:"Fox 38 Factory GRIP X2 (auch E-Bike)",travels:[170,160,180],max:125,e:false,
+    calc:(kg,tr)=>({psi:interp(MK_KG,M.f38,kg)+(tr-160)*0.2,rows:[["Rebound LSR",clk(interp(MK_KG,M.f38L,kg))],["Rebound HSR",mid],["Druckstufe HSC",clk(interp(MK_KG,M.f38HSC,kg))],["Druckstufe LSC",clk(interp(MK_KG,M.f38LSC,kg))]]})},
+  f40n:{name:"Fox 40 Factory GRIP X2 (ab 2025)",travels:[203,200],max:120,e:false,
+    calc:kg=>({psi:interp(F40_KG,F40_PSI,kg),rows:[["Rebound LSR",clk(interp(F40_KG,F40_L,kg))],["Rebound HSR",clk(interp(F40_KG,F40_H,kg))],["Druckstufe LSC","6 Klicks"],["Druckstufe HSC","4 Klicks"]]})},
+  f40o:{name:"Fox 40 Float GRIP2 (bis 2024)",travels:[203,200],max:120,e:false,
+    calc:kg=>({psi:interp(FOX_KG,T.f40old,kg),rows:[["Rebound LSR",clk(interp(FOX_KG,T.f40oldL,kg))],["Rebound HSR",clk(interp(FOX_KG,T.f40oldL,kg))],["Druckstufe LSC","6 Klicks"],["Druckstufe HSC",mid]]})},
+  pike:{name:"RockShox Pike (2023+, Charger 3)",travels:[140,130,150,120],max:163,e:false,
+    calc:kg=>({psi:interp(LY_KG,LY_PSI,kg),rows:[["Rebound",clk(interp(LY_KG,LY_R,kg))],["Druckstufe HSC / LSC","jeweils Mitte"]]})},
+  lyrik:{name:"RockShox Lyrik (2023+, Charger 3)",travels:[160,150,140],max:163,e:false,
+    calc:(kg,tr)=>({psi:interp(LY_KG,LY_PSI,kg)+(160-tr)*0.15,rows:[["Rebound",clk(interp(LY_KG,LY_R,kg))],["Druckstufe HSC",mid],["Druckstufe LSC","Mitte, für ruppige Strecken 1–2 Klicks zu"],["Token","Serienstand, erst bei Durchschlägen +1"]]})},
+  zeb:{name:"RockShox ZEB (2023+, Charger 3)",travels:[170,160,180,190],max:163,e:false,
+    calc:(kg,tr)=>({psi:interp(MK_KG,M.zeb180,kg)-(180-tr)*0.2,rows:[["Rebound",clk(interp(MK_KG,M.zebR,kg))],["Druckstufe HSC",mid],["Druckstufe LSC","Mitte, für ruppige Strecken 1–2 Klicks zu"],["Token","Serienstand, erst bei Durchschlägen +1"]]})},
+  domain:{name:"RockShox Domain (Luft, 2023+)",travels:[170,160,180],max:163,e:false,
+    calc:(kg,tr)=>({psi:interp(MK_KG,M.zeb180,kg)-(180-tr)*0.2,rows:[["Rebound",clk(interp(MK_KG,M.zebR,kg))],["Druckstufe",mid]]})},
+  boxxer:{name:"RockShox BoXXer",travels:[200],max:220,e:false,
+    calc:kg=>({psi:interp(SC_KG,BOX_PSI,kg),rows:[["Rebound",clk(interp(SC_KG,BOX_R,kg))],["Druckstufe HSC / LSC","jeweils Mitte"]]})}
+};
+
+// ===== Dämpfer =====
+// type: air (Faktor relativ zu Float X/Super Deluxe) oder coil (brand rs/fox)
+const SHOCKS={
+  fxp:{name:"Fox Float X Performance",type:"air",f:1.0,
+    rows:kg=>[["Rebound",clk(interp(MK_KG,M.fxL,kg))],["Druckstufe","Hebel offen (Abfahrt)"]]},
+  fxf:{name:"Fox Float X Factory",type:"air",f:1.0,
+    rows:kg=>[["Rebound LSR",clk(interp(MK_KG,M.fxL,kg))],["Rebound HSR",clk(interp(MK_KG,M.fxH,kg))],["Druckstufe LSC",clk(interp(MK_KG,M.fxLSC,kg))+", Hebel offen"]]},
+  fx2:{name:"Fox Float X2 Factory",type:"air",f:0.9,
+    rows:kg=>[["Rebound LSR",clk(interp(RS_KG,X2_L,kg))],["Rebound HSR",clk(interp(RS_KG,X2_H,kg))],["Druckstufe LSC","6 Klicks"],["Druckstufe HSC","5 Klicks"]]},
+  dhx:{name:"Fox DHX Factory (Coil)",type:"coil",brand:"fox",
+    rows:kg=>[["Rebound",clk(interp(SC_KG,DHX2_L,kg))],["Druckstufe LSC",mid],["Vorspannung","1–2 Umdrehungen"]]},
+  dhx2:{name:"Fox DHX2 Factory (Coil)",type:"coil",brand:"fox",
+    rows:kg=>[["Rebound LSR",clk(interp(SC_KG,DHX2_L,kg))],["Rebound HSR",clk(interp(SC_KG,DHX2_H,kg))],["Druckstufe LSC","7 Klicks"],["Druckstufe HSC","4 Klicks"],["Vorspannung","1–2 Umdrehungen"]]},
+  sda:{name:"RockShox Super Deluxe Air",type:"air",f:1.0,
+    rows:kg=>[["Rebound",clk(interp(RS_KG,SD_R,kg))],["Druckstufe LSC","Mitte, Hebel offen"]]},
+  sdc:{name:"RockShox Super Deluxe Coil",type:"coil",brand:"rs",
+    rows:kg=>[["Rebound",clk(interp(RS_KG,SD_R,kg))],["Druckstufe LSC",mid],["Vorspannung","1–2 Umdrehungen"]]},
+  viva:{name:"RockShox Vivid Air Ultimate",type:"air",f:1.05,
+    rows:kg=>[["Rebound",clk(interp(RS_KG,VIV_R,kg))],["Druckstufe HSC / LSC","jeweils Mitte"],["Threshold-Hebel","offen"],["HBO (Endprogression)","Mitte, bei Durchschlägen 1 Klick zu"]]},
+  vivc:{name:"RockShox Vivid Coil Ultimate",type:"coil",brand:"rs",
+    rows:kg=>[["Rebound",clk(interp(SC_KG,VIVC_R,kg))],["Druckstufe HSC / LSC","jeweils Mitte"],["HBO (Endprogression)",mid],["Vorspannung","1–2 Umdrehungen"]]}
+};
+
+// ===== UI =====
+const GEAR=[["ausr","Ausrüstung (Helm, Schuhe, Protektoren, Rucksack …)",6.5]];
+const $=id=>document.getElementById(id);
+function load(){try{return JSON.parse(localStorage.getItem("fwr2")||"{}");}catch(e){return {};}}
+function save(o){try{localStorage.setItem("fwr2",JSON.stringify(o));}catch(e){}}
+const st=load();
+
+$("gear").innerHTML=GEAR.map(([k,l,d])=>`<span>${l}</span><input type="number" inputmode="decimal" min="0" max="15" step="0.1" id="g_${k}" value="${st["g_"+k]??d}">`).join("");
+for(const [k,b] of Object.entries(BIKES)) $("bike").add(new Option(b.name,k));
+for(const [k,f] of Object.entries(FORKS)) $("fork").add(new Option(f.name,k));
+for(const [k,s] of Object.entries(SHOCKS)) $("shock").add(new Option(s.name,k));
+if(st.bike&&BIKES[st.bike]) $("bike").value=st.bike;
+if(st.rider) $("rider").value=st.rider;
+if(st.fork&&FORKS[st.fork]) $("fork").value=st.fork;
+if(st.shock&&SHOCKS[st.shock]) $("shock").value=st.shock;
+if(st.cTravel) $("cTravel").value=st.cTravel;
+if(st.cStroke) $("cStroke").value=st.cStroke;
+if(st.spring) $("spring").value=st.spring;
+$("emtb").checked = st.emtb ?? BIKES[$("bike").value].emtb;
+
+function fillTravel(keep){
+  const f=FORKS[$("fork").value], sel=$("forkTravel"), prev=keep??+sel.value;
+  sel.innerHTML=""; f.travels.forEach(t=>sel.add(new Option(t+" mm",t)));
+  if(f.travels.includes(prev)) sel.value=prev;
+}
+fillTravel(st.forkTravel);
+
+const row=(a,b)=>`<tr><td>${a}</td><td>${b}</td></tr>`;
+const fmt=(v,d=1)=>v.toFixed(d).replace(".",",");
+
+function render(){
+  const bk=$("bike").value, b={...BIKES[bk]};
+  $("customBike").classList.toggle("hidden",bk!=="custom");
+  if(bk==="custom"){ b.travel=parseFloat($("cTravel").value)||160; b.stroke=parseFloat($("cStroke").value)||60; }
+  const LR=b.travel/b.stroke;
+  $("bikeInfo").textContent=`Übersetzung ca. ${fmt(LR,2)}:1. ${b.info}`;
+
+  const rider=parseFloat($("rider").value)||0;
+  let gear=0; GEAR.forEach(([k])=>gear+=parseFloat($("g_"+k).value)||0);
+  const kg=rider+gear, lb=kg*LB;
+  $("total").textContent=fmt(kg)+" kg";
+
+  // Gabel
+  const fk=$("fork").value, f=FORKS[fk], tr=+$("forkTravel").value, fr=f.calc(kg,tr);
+  const add=!f.e && $("emtb").checked;
+  const fpsi=clamp(Math.round(fr.psi*(add?1.05:1)),30,f.max);
+  $("forkOut").innerHTML=row("Luftdruck",`<b>${fpsi} psi</b> <span class="pm">±5</span>`)+
+    row("Sag-Ziel",`20 % = ca. ${Math.round(tr*.2)} mm am O-Ring`)+
+    fr.rows.map(r=>row(r[0],r[1])).join("");
+
+  // Dämpfer
+  const sk=$("shock").value, s=SHOCKS[sk];
+  let html="";
+  if(s.type==="air"){
+    const exact = bk!=="custom";
+    const psi=clamp(Math.round(b.airCal*lb*LR*s.f/5)*5,50,350);
+    const pm = exact ? (s.f===1?15:25) : 30;
+    const sagMm=b.stroke*b.sagAir;
+    html=row("Luftdruck",`<b>${psi} psi</b> <span class="pm">±${pm}</span>`)+
+         row("Sag-Ziel",`${Math.round(b.sagAir*100)} % = ${fmt(sagMm)} mm Hub am Dämpfer`);
+  }
+  let rebKg=kg;
+  $("springBox").classList.toggle("hidden",s.type!=="coil");
+  if(s.type==="coil"){
+    let raw, pm;
+    if(b.coil){ raw=b.coil[s.brand](kg); pm=25; }
+    else { raw=0.72*lb*LR/((b.stroke/25.4)*b.sagCoil); pm=50; }
+    const step=s.brand==="fox"?25:50;
+    const rate=Math.round(raw/step)*step;
+    const sagMm=b.stroke*b.sagCoil;
+    html=row("Empfohlene Feder",`<b>${rate} lbs/in</b> <span class="pm">±${pm}</span>`)+
+         row("Sag-Ziel",`${Math.round(b.sagCoil*100)} % = ${fmt(sagMm)} mm Hub am Dämpfer`);
+    const cur=parseFloat($("spring").value);
+    if(cur>=150){
+      const sagCur=sagMm*raw/cur, pct=sagCur/b.stroke*100;
+      const diff=cur-raw;
+      let verdict;
+      if(Math.abs(diff)<=step) verdict="passt";
+      else if(diff<0) verdict=`zu weich, eher ${rate} lbs/in nehmen`;
+      else verdict=`zu hart, eher ${rate} lbs/in nehmen`;
+      html+=row("Deine Feder",`<b>${cur} lbs/in: ${verdict}</b>`)+
+            row("Erwarteter Sag damit",`ca. ${fmt(sagCur)} mm (${Math.round(pct)} %)`);
+      rebKg=kg*cur/raw; // Rebound richtet sich nach der tatsächlich verbauten Feder
+    }
+    if(bk==="px") html+=row("Hinweis","Amflow rät beim PX von Stahlfederdämpfern ab.");
+  }
+  html+=s.rows(rebKg).map(r=>row(r[0],r[1])).join("");
+  $("shockOut").innerHTML=html;
+
+  const o={bike:bk,rider:$("rider").value,fork:fk,forkTravel:tr,shock:sk,emtb:$("emtb").checked,cTravel:$("cTravel").value,cStroke:$("cStroke").value,spring:$("spring").value};
+  GEAR.forEach(([k])=>o["g_"+k]=$("g_"+k).value); save(o);
+}
+
+function onChange(e){
+  if(e.target.id==="fork") fillTravel();
+  if(e.target.id==="bike") $("emtb").checked=BIKES[$("bike").value].emtb;
+  render();
+}
+document.addEventListener("change",onChange);
+document.addEventListener("input",e=>{ if(e.target.tagName==="INPUT" && e.target.type==="number") render(); });
+render();
+
+try{ if("serviceWorker" in navigator && location.protocol==="https:") navigator.serviceWorker.register("sw.js").catch(()=>{}); }catch(e){}
+</script>
+</body>
+</html>
